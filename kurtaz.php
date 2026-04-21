@@ -2,16 +2,16 @@
 // ============================================================
 // KONFIGURACJA KURTAŻU — TU ZMIENIAJ WARTOŚCI PROCENTOWE
 // ============================================================
-// Jeśli procenty kurtażu się zmienią, edytuj tylko te dwie linie:
+// Jeśli procenty kurtażu się zmienią, edytuj tylko te trzy linie:
 define('KURTAZ_RZEPAK',       0.11);  // 11% — zmień np. na 0.15 dla 15%
 define('KURTAZ_INNE_UPRAWY',  0.14);  // 14% — zmień np. na 0.18 dla 18%
+define('KURTAZ_DODATKOWY',    0.04);  //  4% — zmień np. na 0.05 dla 5%
 // ============================================================
 
 $wyniki = null;
 $errors = [];
 
 function parseKwota(string $val): float {
-    // Obsługa przecinka i kropki jako separator dziesiętny
     $val = str_replace(' ', '', trim($val));
     $val = str_replace(',', '.', $val);
     return (float) $val;
@@ -19,55 +19,43 @@ function parseKwota(string $val): float {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pola = [
-        'rzepak_klient'      => $_POST['rzepak_klient']      ?? '',
-        'rzepak_panstwo'     => $_POST['rzepak_panstwo']     ?? '',
-        'inne_klient'        => $_POST['inne_klient']        ?? '',
-        'inne_panstwo'       => $_POST['inne_panstwo']       ?? '',
-        'ilosc_rat'          => $_POST['ilosc_rat']          ?? '',
+        'rzepak_klient'  => $_POST['rzepak_klient']  ?? '',
+        'rzepak_panstwo' => $_POST['rzepak_panstwo'] ?? '',
+        'inne_klient'    => $_POST['inne_klient']    ?? '',
+        'inne_panstwo'   => $_POST['inne_panstwo']   ?? '',
     ];
 
-    // Walidacja
     foreach (['rzepak_klient', 'rzepak_panstwo', 'inne_klient', 'inne_panstwo'] as $pole) {
         if ($pola[$pole] === '') {
             $errors[$pole] = 'Pole wymagane';
         }
     }
-    $raty = (int) $pola['ilosc_rat'];
-    if ($raty < 1) {
-        $errors['ilosc_rat'] = 'Minimalna liczba rat to 1';
-    }
 
     if (empty($errors)) {
-        // Składki całkowite
         $skladka_rzepak = parseKwota($pola['rzepak_klient']) + parseKwota($pola['rzepak_panstwo']);
         $skladka_inne   = parseKwota($pola['inne_klient'])   + parseKwota($pola['inne_panstwo']);
 
-        // Prowizje
         $prowizja_rzepak = $skladka_rzepak * KURTAZ_RZEPAK;
         $prowizja_inne   = $skladka_inne   * KURTAZ_INNE_UPRAWY;
 
-        // Sumy końcowe
         $suma_skladek  = $skladka_rzepak + $skladka_inne;
         $suma_prowizji = $prowizja_rzepak + $prowizja_inne;
 
-        // Kurtaż procentowy
         $kurtaz_procent = ($suma_skladek > 0)
             ? ($suma_prowizji / $suma_skladek) * 100
             : 0;
 
-        // Rata składki
-        $rata = ($raty > 0) ? $suma_skladek / $raty : 0;
+        $kurtaz_dodatkowy = $suma_skladek * KURTAZ_DODATKOWY;
 
         $wyniki = [
-            'skladka_rzepak'  => $skladka_rzepak,
-            'skladka_inne'    => $skladka_inne,
-            'prowizja_rzepak' => $prowizja_rzepak,
-            'prowizja_inne'   => $prowizja_inne,
-            'suma_skladek'    => $suma_skladek,
-            'suma_prowizji'   => $suma_prowizji,
-            'kurtaz_procent'  => $kurtaz_procent,
-            'rata'            => $rata,
-            'ilosc_rat'       => $raty,
+            'skladka_rzepak'   => $skladka_rzepak,
+            'skladka_inne'     => $skladka_inne,
+            'prowizja_rzepak'  => $prowizja_rzepak,
+            'prowizja_inne'    => $prowizja_inne,
+            'suma_skladek'     => $suma_skladek,
+            'suma_prowizji'    => $suma_prowizji,
+            'kurtaz_procent'   => $kurtaz_procent,
+            'kurtaz_dodatkowy' => $kurtaz_dodatkowy,
         ];
     }
 }
@@ -103,7 +91,6 @@ function val(string $key): string {
     --danger:    #e07070;
     --gold:      #d4c97a;
     --radius:    10px;
-    --shadow:    0 4px 32px rgba(0,0,0,0.45);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,10 +106,7 @@ function val(string $key): string {
       radial-gradient(ellipse 40% 60% at 90% 100%, rgba(60,100,50,0.10) 0%, transparent 70%);
   }
 
-  .wrap {
-    max-width: 760px;
-    margin: 0 auto;
-  }
+  .wrap { max-width: 760px; margin: 0 auto; }
 
   header {
     text-align: center;
@@ -145,11 +129,7 @@ function val(string $key): string {
     color: var(--accent2);
     line-height: 1.15;
   }
-  header p {
-    margin-top: 0.5rem;
-    font-size: 0.88rem;
-    color: var(--text-dim);
-  }
+  header p { margin-top: 0.5rem; font-size: 0.88rem; color: var(--text-dim); }
 
   .rates-badge {
     display: inline-flex;
@@ -165,7 +145,6 @@ function val(string $key): string {
   }
   .rates-badge span { color: var(--accent); font-weight: 500; }
 
-  /* ---- FORM ---- */
   form { display: flex; flex-direction: column; gap: 1.4rem; }
 
   .section-card {
@@ -205,11 +184,7 @@ function val(string $key): string {
     color: var(--gold);
   }
 
-  .fields {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-  }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
   .field {
     padding: 1rem 1.2rem;
     border-right: 1px solid var(--border);
@@ -218,18 +193,8 @@ function val(string $key): string {
   .field:nth-child(even) { border-right: none; }
   .field:nth-last-child(-n+2) { border-bottom: none; }
 
-  .field label {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    margin-bottom: 0.45rem;
-    letter-spacing: 0.01em;
-  }
-  .field .input-wrap {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
+  .field label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 0.45rem; }
+  .field .input-wrap { position: relative; display: flex; align-items: center; }
   .field input {
     width: 100%;
     background: var(--surface);
@@ -241,61 +206,11 @@ function val(string $key): string {
     padding: 0.55rem 2.2rem 0.55rem 0.75rem;
     transition: border-color 0.18s, box-shadow 0.18s;
     outline: none;
-    -moz-appearance: textfield;
   }
-  .field input::-webkit-outer-spin-button,
-  .field input::-webkit-inner-spin-button { -webkit-appearance: none; }
-  .field input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(126,201,126,0.12);
-  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(126,201,126,0.12); }
   .field input.err { border-color: var(--danger); }
-  .field .unit {
-    position: absolute;
-    right: 0.65rem;
-    font-size: 0.7rem;
-    color: var(--muted);
-    font-family: 'DM Mono', monospace;
-    pointer-events: none;
-  }
-  .field .error-msg {
-    font-size: 0.7rem;
-    color: var(--danger);
-    margin-top: 0.3rem;
-  }
-
-  .single-field {
-    padding: 1rem 1.2rem;
-  }
-  .single-field label {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    margin-bottom: 0.45rem;
-  }
-  .single-field .input-wrap { position: relative; display: flex; align-items: center; max-width: 200px; }
-  .single-field input {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: 'DM Mono', monospace;
-    font-size: 1rem;
-    padding: 0.55rem 2.5rem 0.55rem 0.75rem;
-    outline: none;
-    transition: border-color 0.18s, box-shadow 0.18s;
-    -moz-appearance: textfield;
-  }
-  .single-field input::-webkit-outer-spin-button,
-  .single-field input::-webkit-inner-spin-button { -webkit-appearance: none; }
-  .single-field input:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(126,201,126,0.12);
-  }
-  .single-field input.err { border-color: var(--danger); }
-  .single-field .unit { position: absolute; right: 0.65rem; font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono', monospace; pointer-events: none; }
-  .single-field .error-msg { font-size: 0.7rem; color: var(--danger); margin-top: 0.3rem; }
+  .field .unit { position: absolute; right: 0.65rem; font-size: 0.7rem; color: var(--muted); font-family: 'DM Mono', monospace; pointer-events: none; }
+  .field .error-msg { font-size: 0.7rem; color: var(--danger); margin-top: 0.3rem; }
 
   .btn-row { display: flex; gap: 1rem; }
   button[type="submit"] {
@@ -309,12 +224,9 @@ function val(string $key): string {
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    letter-spacing: 0.02em;
     transition: background 0.18s, transform 0.1s;
   }
   button[type="submit"]:hover { background: var(--accent2); transform: translateY(-1px); }
-  button[type="submit"]:active { transform: translateY(0); }
-
   button[type="reset"] {
     background: transparent;
     color: var(--text-dim);
@@ -328,7 +240,6 @@ function val(string $key): string {
   }
   button[type="reset"]:hover { border-color: var(--muted); color: var(--text); }
 
-  /* ---- WYNIKI ---- */
   .results {
     background: var(--card);
     border: 1px solid var(--accent);
@@ -342,9 +253,6 @@ function val(string $key): string {
     padding: 0.9rem 1.4rem;
     background: rgba(126,201,126,0.08);
     border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
   }
   .results-header h3 {
     font-family: 'DM Serif Display', serif;
@@ -353,10 +261,7 @@ function val(string $key): string {
     color: var(--accent2);
   }
 
-  .results-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; }
   .res-block {
     padding: 1rem 1.4rem;
     border-right: 1px solid var(--border);
@@ -372,11 +277,7 @@ function val(string $key): string {
     text-transform: uppercase;
     letter-spacing: 0.06em;
   }
-  .res-block .res-val {
-    font-family: 'DM Mono', monospace;
-    font-size: 1.1rem;
-    color: var(--text);
-  }
+  .res-block .res-val { font-family: 'DM Mono', monospace; font-size: 1.1rem; color: var(--text); }
   .res-block .res-val.highlight { color: var(--accent2); font-size: 1.25rem; }
   .res-block .res-val.gold { color: var(--gold); font-size: 1.25rem; }
 
@@ -402,7 +303,6 @@ function val(string $key): string {
     line-height: 1;
   }
 
-  /* ---- RESPONSIVE ---- */
   @media (max-width: 500px) {
     .fields { grid-template-columns: 1fr; }
     .field { border-right: none; }
@@ -444,8 +344,7 @@ function val(string $key): string {
           <label for="rzepak_klient">Składka płatna przez klienta</label>
           <div class="input-wrap">
             <input type="text" inputmode="decimal" id="rzepak_klient" name="rzepak_klient"
-              value="<?= val('rzepak_klient') ?>"
-              placeholder="0,00"
+              value="<?= val('rzepak_klient') ?>" placeholder="0,00"
               class="<?= isset($errors['rzepak_klient']) ? 'err' : '' ?>">
             <span class="unit">zł</span>
           </div>
@@ -457,8 +356,7 @@ function val(string $key): string {
           <label for="rzepak_panstwo">Składka płatna przez państwo</label>
           <div class="input-wrap">
             <input type="text" inputmode="decimal" id="rzepak_panstwo" name="rzepak_panstwo"
-              value="<?= val('rzepak_panstwo') ?>"
-              placeholder="0,00"
+              value="<?= val('rzepak_panstwo') ?>" placeholder="0,00"
               class="<?= isset($errors['rzepak_panstwo']) ? 'err' : '' ?>">
             <span class="unit">zł</span>
           </div>
@@ -481,8 +379,7 @@ function val(string $key): string {
           <label for="inne_klient">Składka płatna przez klienta</label>
           <div class="input-wrap">
             <input type="text" inputmode="decimal" id="inne_klient" name="inne_klient"
-              value="<?= val('inne_klient') ?>"
-              placeholder="0,00"
+              value="<?= val('inne_klient') ?>" placeholder="0,00"
               class="<?= isset($errors['inne_klient']) ? 'err' : '' ?>">
             <span class="unit">zł</span>
           </div>
@@ -494,8 +391,7 @@ function val(string $key): string {
           <label for="inne_panstwo">Składka płatna przez państwo</label>
           <div class="input-wrap">
             <input type="text" inputmode="decimal" id="inne_panstwo" name="inne_panstwo"
-              value="<?= val('inne_panstwo') ?>"
-              placeholder="0,00"
+              value="<?= val('inne_panstwo') ?>" placeholder="0,00"
               class="<?= isset($errors['inne_panstwo']) ? 'err' : '' ?>">
             <span class="unit">zł</span>
           </div>
@@ -503,26 +399,6 @@ function val(string $key): string {
             <div class="error-msg"><?= $errors['inne_panstwo'] ?></div>
           <?php endif; ?>
         </div>
-      </div>
-    </div>
-
-    <!-- ILOŚĆ RAT -->
-    <div class="section-card">
-      <div class="section-header">
-        <span class="tag">Raty</span>
-        <h2>Ilość Rat</h2>
-      </div>
-      <div class="single-field">
-        <label for="ilosc_rat">Liczba rat (składka zostanie podzielona)</label>
-        <div class="input-wrap">
-          <input type="number" id="ilosc_rat" name="ilosc_rat" min="1" step="1"
-            value="<?= val('ilosc_rat') ?: '1' ?>"
-            class="<?= isset($errors['ilosc_rat']) ? 'err' : '' ?>">
-          <span class="unit">szt</span>
-        </div>
-        <?php if (isset($errors['ilosc_rat'])): ?>
-          <div class="error-msg"><?= $errors['ilosc_rat'] ?></div>
-        <?php endif; ?>
       </div>
     </div>
 
@@ -565,9 +441,9 @@ function val(string $key): string {
         <div class="res-label">Suma prowizji łącznie</div>
         <div class="res-val highlight"><?= fmt($wyniki['suma_prowizji']) ?></div>
       </div>
-      <div class="res-block" style="grid-column: span 2; border-bottom: none;">
-        <div class="res-label">Rata składki (<?= $wyniki['ilosc_rat'] ?> <?= $wyniki['ilosc_rat'] == 1 ? 'rata' : ($wyniki['ilosc_rat'] < 5 ? 'raty' : 'rat') ?>)</div>
-        <div class="res-val highlight"><?= fmt($wyniki['rata']) ?> / ratę</div>
+      <div class="res-block" style="grid-column: span 2;">
+        <div class="res-label">Kurtaż dodatkowy (<?= round(KURTAZ_DODATKOWY*100,2) ?>% łącznej składki)</div>
+        <div class="res-val gold"><?= fmt($wyniki['kurtaz_dodatkowy']) ?></div>
       </div>
     </div>
 
