@@ -64,7 +64,7 @@ function fmt(float $val): string {
     return number_format($val, 2, ',', ' ') . ' zł';
 }
 function fmtPct(float $val): string {
-    return number_format($val, 4, ',', ' ') . ' %';
+    return number_format($val, 6, ',', ' ') . ' %';
 }
 function val(string $key): string {
     return htmlspecialchars($_POST[$key] ?? '');
